@@ -55,7 +55,7 @@ neo4jSchema.getSchema().then((schema) => {
     schema,
   });
 
-  server.listen({ port: 4001 }).then(({ url }) => {
+  server.listen({ port: 4000 }).then(({ url }) => {
     console.log(`GraphQL server ready on ${url}`);
   });
 });
