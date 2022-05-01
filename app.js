@@ -22,23 +22,11 @@ const typeDefs = `
       relOut: [MyNode!]! @relationship(type: "REL", properties: "MyRel", direction: OUT)
       relIn: [MyNode!]! @relationship(type: "REL", properties: "MyRel", direction: IN)
     }
+    
     interface MyRel @relationshipProperties {
       name: [String!]
     }
-    type Description {
-      countNode: Int @cypher(
-        statement: """
-        MATCH(N)
-        RETURN COUNT(N)
-        """
-      ),
-      countRelation: Int @cypher(
-        statement: """
-        MATCH(N)-[R]->(X)
-        RETURN COUNT(R)
-        """
-      )
-    }
+
     type Mutation {
       insertTwoNodes(
         E1_value: String!
@@ -52,18 +40,31 @@ const typeDefs = `
 
 const ogm = new OGM({ typeDefs, driver });
 const MyNode = ogm.model("MyNode");
-const Description = ogm.model("Description");
 
 const resolvers = {
   Mutation: {
     insertTwoNodes: async (
-      req,
+      _,
       { E1_value, E1_type, E2_value, E2_type, REL },
       ___
     ) => {
-      console.log(req)
+      const selectionSet = `
+          {
+              relOut {
+                type
+              }
+          }
+      `;
       let nodeNum = await (await MyNode.find()).length
-      let relationNum = await MyNode.find()
+      let relationNum = await MyNode.find({ selectionSet }).then((nodes)=>{
+        let num = 0
+        nodes.map((items)=>{
+          num += items.relOut.length
+        })
+        return num
+      })
+      console.log(relationNum)
+
       if (nodeNum>=NODE_LIMIT) {
         //노드 2개 삭제 후 관련 RELATION 모두 삭제
       }
@@ -80,7 +81,7 @@ const resolvers = {
       });
       isNode1Exist = isNode1Exist.length >= 1;
       isNode2Exist = isNode2Exist.length >= 1;
-/*
+
       //둘다 존재하지 않을때
       if (!isNode1Exist && !isNode2Exist) {
         MyNode.create({
@@ -162,7 +163,7 @@ const resolvers = {
             },
           },
         })
-      }*/
+      }
       return true;
     },
   },
