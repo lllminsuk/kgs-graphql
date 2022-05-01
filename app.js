@@ -16,7 +16,11 @@ const typeDefs = `
     type MyNode {
       type: String!
       value: String!
-      rel: [MyNode!]! @relationship(type: "REL", direction: OUT)
+      rel: [MyNode!]! @relationship(type: "REL", properties: "MyRel", direction: OUT)
+    }
+    
+    interface MyRel @relationshipProperties {
+      name: [String!]
     }
 
     type Mutation {
@@ -60,12 +64,14 @@ const resolvers = {
               rel: {
                 create: {
                   node: { value: E2_value, type: E2_type },
+                  edge: {
+                    name: REL,
+                  },
                 },
               },
             },
           ],
         });
-        My;
       }
       //node2만 존재할때
       else if (!isNode1Exist && isNode2Exist) {
