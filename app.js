@@ -14,7 +14,7 @@ const resolvers = {
       console.log(E2_value);
       console.log(E2_type);
       console.log(REL);
-      return "HI";
+      return true;
     },
   },
 };
@@ -27,16 +27,47 @@ const typeDefs = gql`
       E2_value: String!
       E2_type: String!
       REL: String!
-    ): String!
+    ): Boolean!
   }
-
+  type Query {
+    countRelation: Int
+      @cypher(
+          statement: """
+          MATCH (n)-[r]->(x)
+          RETURN count(r)
+          """
+      )
+  }
+  type Query {
+    countNode: Int
+      @cypher(
+        statement: """
+        MATCH (n)
+        RETURN count(*)
+        """
+      )
+  }
+  type Mutation {
+    deleteNode: Boolean
+      @cypher(
+        statement: """
+          MATCH (n)
+          WITH n
+          ORDER BY n.createdAt
+          LIMIT 1
+          DETACH DELETE n
+          RETURN n
+          """
+      )
+  }
   type MY_NODE {
     value: String!
     type: String!
     relation: [MY_NODE!]!
       @relationship(type: "REL", properties: "REL", direction: IN)
+    createdAt: DateTime! @timestamp(operations: [CREATE])
+    updatedAt: DateTime! @timestamp(operations: [UPDATE])
   }
-
   interface REL @relationshipProperties {
     name: [String!]
   }
