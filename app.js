@@ -27,10 +27,10 @@ const typeDefs = `
       name: [String!]
     }
     type Query {
-      findByValue(
-        E1_value: String!
-        E2_value: String!
-      ): MyNode!
+      search(
+        limit: Int!
+        sentence: String!
+      ): [MyNode]!
     }
     type Mutation {
       insertTwoNodes(
@@ -77,77 +77,34 @@ const Info = ogm.model("Info")
 
 const resolvers = {
   Query: {
-    findByValue: async (
+    search: async (
       _,
-      { E1_value, E2_value },
+      { limit, sentence },
       ___
     ) => {
       const selectionSet = `
         {
-          type
           value
           relOut {
-            type
             value
           }
           relIn {
-            type
             value
           }
         }
       `;
-      let isNode1Exist = await MyNode.find({
-        where: { value: E1_value },
-      });
-      let isNode2Exist = await MyNode.find({
-        where: { value: E2_value },
-      });
-      isNode1Exist = isNode1Exist.length >= 1;
-      isNode2Exist = isNode2Exist.length >= 1;
-      //둘다 존재하지 않을때
-      if (!isNode1Exist && !isNode2Exist) {
-        return false
-      }
-      //node2만 존재할때
-      else if (!isNode1Exist && isNode2Exist) {
-        return MyNode.find({ selectionSet }).then((node) => {
-          return MyNode.find({ selectionSet }).then((node) => {
-            for (var i=0; i<node.length; i++) {
-              if (node[i].value===E2_value) {
-                console.log(node[i])
-                return node[i]
-              }
-            }
-          })
-        })
-      }
-      //node1만 존재할때
-      else if (isNode1Exist && !isNode2Exist) {
-        return MyNode.find({ selectionSet }).then((node) => {
-          for (var i=0; i<node.length; i++) {
-            if (node[i].value===E1_value) {
-              console.log(node[i])
-              return node[i]
-            }
+      var returnList = []
+      var keyword = sentence.split(" ")
+      await Promise.allSettled(keyword.map(async (word) => {
+        var tempNode = await MyNode.find({ selectionSet: selectionSet,
+          where: {
+            value: word,
           }
         })
-      }
-      //둘다 존재할때
-      else {
-        var nodeArr = {}
-        MyNode.find({ selectionSet }).then((node) => {
-          for (var i=0; i<node.length; i++) {
-            if (node[i].value===E1_value) {
-              
-            }
-            if (node[i].value===E2_value) {
-              
-            }
-          }
-        })
-        console.log(nodeArr)
-        return nodeArr
-      }
+        returnList.push(JSON.parse(JSON.stringify(tempNode[0])))
+      }));
+      console.log(returnList)
+      return returnList
     },
   },
   Mutation: {
