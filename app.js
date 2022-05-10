@@ -87,9 +87,11 @@ const resolvers = {
           value
           relOut {
             value
+            createdAt
           }
           relIn {
             value
+            createdAt
           }
         }
       `;
@@ -99,10 +101,56 @@ const resolvers = {
         var tempNode = await MyNode.find({ selectionSet: selectionSet,
           where: {
             value: word,
-          }
+          },
         })
         returnList.push(JSON.parse(JSON.stringify(tempNode[0])))
       }));
+      limitList = []
+      for (var i=0; i<returnList.length; i++){
+        for (var j=0; j<returnList[i].relOut.length; j++) {
+          //returnList[i].relOut[j].beforeNode = returnList[i].value
+          //returnList[i].relOut[j].rel = "relOut"
+          limitList.push(returnList[i].relOut[j])
+        }
+        for (var j=0; j<returnList[i].relIn.length; j++) {
+          //returnList[i].relOut[j].beforeNode = returnList[i].value
+          //returnList[i].relOut[j].rel = "relIn"
+          limitList.push(returnList[i].relIn[j])
+        }
+      }
+      //날짜 내림차순으로 정렬
+      limitList.sort(function(x, y){
+        return new Date(y.createdAt) - new Date(x.createdAt)
+      })
+      limitList = limitList.slice(0,limit) //limit 제한만큼 남기기
+      for (var i=0; i<returnList.length; i++){
+        for (var j=0; j<returnList[i].relOut.length; j++) {
+          var check = false
+          for (var k=0; k<limitList.length; k++) {
+            if (limitList[k].value===returnList[i].relOut[j].value) {
+              check = true
+              break
+            }
+          }
+          if (check===false) {
+            returnList[i].relOut.splice(j,1) //limit 제한 걸리는 노드 삭제
+            j--
+          }
+        }
+        for (var j=0; j<returnList[i].relIn.length; j++) {
+          var check = false
+          for (var k=0; k<limitList.length; k++) {
+            if (limitList[k].value===returnList[i].relIn[j].value) {
+              check = true
+              break
+            }
+          }
+          if (check===false) {
+            returnList[i].relIn.splice(j,1) //limit 제한 걸리는 노드 삭제
+            j--
+          }
+        }
+      }      
       console.log(returnList)
       return returnList
     },
