@@ -112,22 +112,16 @@ const resolvers = {
 
       var nodes = [];
       var links = [];
-      var wordsList = words.split(" ");
-      for (var i = 0; i < wordsList.length; i++) {
-        var findedNodes =
-          !words === ""
-            ? await MyNode.find({
-                selectionSet: selectionSet,
-                where: {
-                  value: wordsList[i],
-                },
-              })
-            : await MyNode.find({
-                selectionSet: selectionSet,
-              });
 
+      if (words === "") {
+        var findedNodes = await MyNode.find({
+          selectionSet: selectionSet,
+          where: {
+            value: wordsList[i],
+          },
+          limit: limit,
+        });
         findedNodes.map((source) => {
-          if (nodes.length >= limit) return;
           nodes.push({ id: source.value });
           source.relOut.map((target, index) => {
             links.push({
@@ -137,8 +131,30 @@ const resolvers = {
             });
           });
         });
+      } else {
+        var wordsList = words.split(" ");
+        for (var i = 0; i < wordsList.length; i++) {
+          var findedNodes = await MyNode.find({
+            selectionSet: selectionSet,
+            where: {
+              value: wordsList[i],
+            },
+          });
+
+          findedNodes.map((source) => {
+            if (nodes.length >= limit) return;
+            nodes.push({ id: source.value });
+            source.relOut.map((target, index) => {
+              links.push({
+                source: source.value,
+                target: target.value,
+                label: source.relOutConnection.edges[index].name[0],
+              });
+            });
+          });
+        }
       }
-      console.log({ nodes, links });
+      //console.log({ nodes, links });
 
       return { nodes, links };
     },
