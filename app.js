@@ -7,8 +7,8 @@ const AURA_ENDPOINT = "neo4j+s://1eed4b64.databases.neo4j.io";
 const USERNAME = "neo4j";
 const PASSWORD = "1LlRRhK6aoBn-ofn12xZXJ0-hWRAoGamSPR2bB1ykbg";
 
-const NODE_LIMIT = 50000
-const RELATION_LIMIT = 175000
+const NODE_LIMIT = 50000;
+const RELATION_LIMIT = 175000;
 
 const driver = neo4j.driver(
   AURA_ENDPOINT,
@@ -16,6 +16,22 @@ const driver = neo4j.driver(
 );
 
 const typeDefs = `
+    type D3Node{
+      id: String!
+      url: String
+    }
+
+    type D3Link{
+      source: String!
+      target: String!
+      label: String!
+    }
+
+    type D3Return{
+      nodes:[D3Node]!
+      links:[D3Link]!
+    }
+
     type MyNode {
       type: String!
       value: String!
@@ -29,14 +45,8 @@ const typeDefs = `
     type Query {
       search(
         limit: Int!
-        sentence: String!
-      ): [MyNode]!
-      returnNode: [MyNode]!
-      @cypher(
-        statement: """
-        MATCH (N) WHERE N.value IS NOT NULL RETURN N
-        """
-      )
+        words: String!
+      ): D3Return!
     }
     type Mutation {
       insertTwoNodes(
@@ -79,88 +89,61 @@ const typeDefs = `
 
 const ogm = new OGM({ typeDefs, driver });
 const MyNode = ogm.model("MyNode");
-const Info = ogm.model("Info")
+const Info = ogm.model("Info");
 
 const resolvers = {
   Query: {
-    search: async (
-      _,
-      { limit, sentence },
-      ___
-    ) => {
+    search: async (_, { limit, words }, ___) => {
       const selectionSet = `
         {
           value
+          type
+          relOutConnection {
+            edges {
+              name
+            }
+          }
           relOut {
             value
-            createdAt
-          }
-          relIn {
-            value
-            createdAt
+            type
           }
         }
       `;
-      var returnList = []
-      var keyword = sentence.split(" ")
-      await Promise.allSettled(keyword.map(async (word) => {
-        var tempNode = await MyNode.find({ selectionSet: selectionSet,
-          where: {
-            value: word,
-          },
-        })
-        returnList.push(JSON.parse(JSON.stringify(tempNode[0])))
-      }));
-      limitList = [] //날짜 정렬을 위한 리스트
-      for (var i=0; i<returnList.length; i++){
-        for (var j=0; j<returnList[i].relOut.length; j++) {
-          //returnList[i].relOut[j].beforeNode = returnList[i].value
-          //returnList[i].relOut[j].rel = "relOut"
-          limitList.push(returnList[i].relOut[j])
-        }
-        for (var j=0; j<returnList[i].relIn.length; j++) {
-          //returnList[i].relOut[j].beforeNode = returnList[i].value
-          //returnList[i].relOut[j].rel = "relIn"
-          limitList.push(returnList[i].relIn[j])
-        }
+
+      var nodes = [];
+      var links = [];
+      var wordsList = words.split(" ");
+      for (var i = 0; i < wordsList.length; i++) {
+        var findedNodes =
+          !words === ""
+            ? await MyNode.find({
+                selectionSet: selectionSet,
+                where: {
+                  value: wordsList[i],
+                },
+              })
+            : await MyNode.find({
+                selectionSet: selectionSet,
+              });
+
+        findedNodes.map((source) => {
+          if (nodes.length >= limit) return;
+          nodes.push({ id: source.value });
+          source.relOut.map((target, index) => {
+            links.push({
+              source: source.value,
+              target: target.value,
+              label: source.relOutConnection.edges[index].name[0],
+            });
+          });
+        });
       }
-      //날짜 내림차순으로 정렬
-      limitList.sort(function(x, y){
-        return new Date(y.createdAt) - new Date(x.createdAt)
-      })
-      limitList = limitList.slice(0,limit) //limit 제한만큼 남기기
-      for (var i=0; i<returnList.length; i++){
-        for (var j=0; j<returnList[i].relOut.length; j++) {
-          var check = false
-          for (var k=0; k<limitList.length; k++) {
-            if (limitList[k].value===returnList[i].relOut[j].value) {
-              check = true
-              break
-            }
-          }
-          if (check===false) {
-            returnList[i].relOut.splice(j,1) //limit 제한 걸리는 노드 삭제
-            j--
-          }
-        }
-        for (var j=0; j<returnList[i].relIn.length; j++) {
-          var check = false
-          for (var k=0; k<limitList.length; k++) {
-            if (limitList[k].value===returnList[i].relIn[j].value) {
-              check = true
-              break
-            }
-          }
-          if (check===false) {
-            returnList[i].relIn.splice(j,1) //limit 제한 걸리는 노드 삭제
-            j--
-          }
-        }
-      }      
-      console.log(returnList)
-      return returnList
+      console.log({ nodes, links });
+
+      return { nodes, links };
     },
   },
+
   Mutation: {
     insertTwoNodes: async (
       _,
@@ -173,14 +156,15 @@ const resolvers = {
             countRelation
           }
       `;
-      let desc
-      await Info.find({ selectionSet:selectionSet }).then((nodes)=>{ //관계 개수
+      let desc;
+      await Info.find({ selectionSet: selectionSet }).then((nodes) => {
+        //관계 개수
         desc = nodes[0];
-      })
-      
-      let nodeNum = desc.countNode //노드 개수
-      let relationNum = desc.countRelation
-      console.log(nodeNum, relationNum)
+      });
+
+      let nodeNum = desc.countNode; //노드 개수
+      let relationNum = desc.countRelation;
+      console.log(nodeNum, relationNum);
 
       //Node 존재여부 체크필요
       let isNode1Exist = await MyNode.find({
@@ -192,66 +176,71 @@ const resolvers = {
       isNode1Exist = isNode1Exist.length >= 1;
       isNode2Exist = isNode2Exist.length >= 1;
 
-      if (!isNode1Exist && !isNode2Exist && nodeNum+2 > NODE_LIMIT) {
-        console.log("deleteTwoNode")
+      if (!isNode1Exist && !isNode2Exist && nodeNum + 2 > NODE_LIMIT) {
+        console.log("deleteTwoNode");
         //노드 2개 삭제 후 관련 RELATION 모두 삭제
         let findDeleteNode = await MyNode.find({
           options: {
             sort: [
               {
-                createdAt: "ASC"
-              }
-            ],
-            limit: 2
-          }
-        })
-        findDeleteNode.map(async(node) => {
-          await MyNode.delete({
-            where: {
-              type: node.type,
-              value: node.value,
-            },
-          })
-        })
-      }
-      else if (((!isNode1Exist&&isNode2Exist) || (isNode1Exist&&!isNode2Exist)) && nodeNum+1 > NODE_LIMIT) {
-        console.log("deleteOneNode")
-        //노드 2개 삭제 후 관련 RELATION 모두 삭제
-        let findDeleteNode = await MyNode.find({
-          options: {
-            sort: [
-              {
-                createdAt: "ASC"
-              }
-            ],
-            limit: 1
-          }
-        })
-        findDeleteNode.map(async(node) => {
-          await MyNode.delete({
-            where: {
-              type: node.type,
-              value: node.value,
-            },
-          })
-        })
-      }
-      
-        let relExist = await MyNode.find({
-          where: {
-            value: E1_value,
-            type: E1_type,
-            relOutConnection_SINGLE: {
-              node: {
-                value: E2_value,
-                type: E2_type
+                createdAt: "ASC",
               },
-            }
-          }
-        })
-        relExist = relExist.length > 0
+            ],
+            limit: 2,
+          },
+        });
+        findDeleteNode.map(async (node) => {
+          await MyNode.delete({
+            where: {
+              type: node.type,
+              value: node.value,
+            },
+          });
+        });
+      } else if (
+        ((!isNode1Exist && isNode2Exist) || (isNode1Exist && !isNode2Exist)) &&
+        nodeNum + 1 > NODE_LIMIT
+      ) {
+        console.log("deleteOneNode");
+        //노드 2개 삭제 후 관련 RELATION 모두 삭제
+        let findDeleteNode = await MyNode.find({
+          options: {
+            sort: [
+              {
+                createdAt: "ASC",
+              },
+            ],
+            limit: 1,
+          },
+        });
+        findDeleteNode.map(async (node) => {
+          await MyNode.delete({
+            where: {
+              type: node.type,
+              value: node.value,
+            },
+          });
+        });
+      }
 
-      if (!(isNode1Exist && isNode2Exist && relExist) && relationNum+1 > RELATION_LIMIT) {
+      let relExist = await MyNode.find({
+        where: {
+          value: E1_value,
+          type: E1_type,
+          relOutConnection_SINGLE: {
+            node: {
+              value: E2_value,
+              type: E2_type,
+            },
+          },
+        },
+      });
+      relExist = relExist.length > 0;
+
+      if (
+        !(isNode1Exist && isNode2Exist && relExist) &&
+        relationNum + 1 > RELATION_LIMIT
+      ) {
         const selectionSet2 = `
           {
             type
@@ -263,30 +252,31 @@ const resolvers = {
           }
         `;
 
-        let a = await MyNode.find({ selectionSet:selectionSet2, 
+        let a = await MyNode.find({
+          selectionSet: selectionSet2,
           where: {
             relOutAggregate: {
-              count_GT: 0
-            }
+              count_GT: 0,
+            },
           },
           options: {
             sort: [
               {
-                createdAt: "ASC"
-              }
+                createdAt: "ASC",
+              },
             ],
-            limit: 1
-          }
-        })
-        let nodeType1 = a[0].type
-        let nodeValue1 = a[0].value
-        let nodeType2 = a[0].relOut[a[0].relOut.length-1].type
-        let nodeValue2 = a[0].relOut[a[0].relOut.length-1].value 
-        console.log(nodeType1, nodeValue1, nodeType2, nodeValue2)
+            limit: 1,
+          },
+        });
+        let nodeType1 = a[0].type;
+        let nodeValue1 = a[0].value;
+        let nodeType2 = a[0].relOut[a[0].relOut.length - 1].type;
+        let nodeValue2 = a[0].relOut[a[0].relOut.length - 1].value;
+        console.log(nodeType1, nodeValue1, nodeType2, nodeValue2);
         await MyNode.update({
           where: {
             type: nodeType1,
-            value: nodeValue1
+            value: nodeValue1,
           },
           update: {
             relOut: [
@@ -296,18 +286,18 @@ const resolvers = {
                     where: {
                       node: {
                         type: nodeType2,
-                        value: nodeValue2
-                      }
-                    }
-                  }
-                ]
-              }
-            ]
-          }
-        })
-        console.log(relExist)
+                        value: nodeValue2,
+                      },
+                    },
+                  },
+                ],
+              },
+            ],
+          },
+        });
+        console.log(relExist);
       }
-      
+
       //둘다 존재하지 않을때
       if (!isNode1Exist && !isNode2Exist) {
         MyNode.create({
@@ -336,7 +326,7 @@ const resolvers = {
               type: E1_type,
               relOut: {
                 connect: {
-                  where:{
+                  where: {
                     node: { value: E2_value, type: E2_type },
                   },
                   edge: {
@@ -357,7 +347,7 @@ const resolvers = {
               type: E2_type,
               relIn: {
                 connect: {
-                  where:{
+                  where: {
                     node: { value: E1_value, type: E1_type },
                   },
                   edge: {
@@ -372,14 +362,14 @@ const resolvers = {
       //둘다 존재할때
       else {
         MyNode.update({
-          where: { 
+          where: {
             value: E1_value,
-            type: E1_type
+            type: E1_type,
           },
-          update: { 
+          update: {
             relOut: {
               connect: {
-                where:{
+                where: {
                   node: { value: E2_value, type: E2_type },
                 },
                 edge: {
@@ -388,7 +378,7 @@ const resolvers = {
               },
             },
           },
-        })
+        });
       }
       return true;
     },
@@ -401,24 +391,24 @@ const neo4jSchema = new Neo4jGraphQL({ typeDefs, driver, resolvers });
 Promise.all([neo4jSchema.getSchema(), ogm.init()]).then(([schema]) => {
   const server = new ApolloServer({
     schema,
-    context: async({ req }) => {
-      return { req }
+    context: async ({ req }) => {
+      return { req };
     },
   });
-  
-  server.listen().then(async({ url }) => {
+
+  server.listen().then(async ({ url }) => {
     console.log(`🚀 Server ready at ${url}`);
     let isInfoExist = await Info.find({
       where: { id: 0 },
     });
-    if(isInfoExist.length===0){
+    if (isInfoExist.length === 0) {
       await Info.create({
         input: [
           {
-            id: 0
-          }
-        ]
-      })
+            id: 0,
+          },
+        ],
+      });
     }
   });
 });
