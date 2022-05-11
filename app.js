@@ -31,6 +31,12 @@ const typeDefs = `
         limit: Int!
         sentence: String!
       ): [MyNode]!
+      returnNode: [MyNode]!
+      @cypher(
+        statement: """
+        MATCH (N) WHERE N.value IS NOT NULL RETURN N
+        """
+      )
     }
     type Mutation {
       insertTwoNodes(
