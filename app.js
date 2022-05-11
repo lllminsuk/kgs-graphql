@@ -7,8 +7,8 @@ const AURA_ENDPOINT = "neo4j+s://1eed4b64.databases.neo4j.io";
 const USERNAME = "neo4j";
 const PASSWORD = "1LlRRhK6aoBn-ofn12xZXJ0-hWRAoGamSPR2bB1ykbg";
 
-const NODE_LIMIT = 100//50000
-const RELATION_LIMIT = 5//175000
+const NODE_LIMIT = 50000
+const RELATION_LIMIT = 175000
 
 const driver = neo4j.driver(
   AURA_ENDPOINT,
@@ -105,7 +105,7 @@ const resolvers = {
         })
         returnList.push(JSON.parse(JSON.stringify(tempNode[0])))
       }));
-      limitList = []
+      limitList = [] //날짜 정렬을 위한 리스트
       for (var i=0; i<returnList.length; i++){
         for (var j=0; j<returnList[i].relOut.length; j++) {
           //returnList[i].relOut[j].beforeNode = returnList[i].value
