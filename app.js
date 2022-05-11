@@ -139,9 +139,12 @@ const resolvers = {
           });
 
           findedNodes.map((source) => {
+            console.log(source);
             if (nodes.length >= limit) return;
             nodes.push({ id: source.value });
             source.relOut.map((target, index) => {
+              if (nodes.length >= limit) return;
+              nodes.push({ id: target.value });
               links.push({
                 source: source.value,
                 target: target.value,
@@ -151,7 +154,7 @@ const resolvers = {
           });
         }
       }
-      //console.log({ nodes, links });
+      console.log({ nodes, links });
 
       return { nodes, links };
     },
