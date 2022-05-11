@@ -116,9 +116,6 @@ const resolvers = {
       if (words === "") {
         var findedNodes = await MyNode.find({
           selectionSet: selectionSet,
-          where: {
-            value: wordsList[i],
-          },
           limit: limit,
         });
         findedNodes.map((source) => {
