@@ -107,6 +107,15 @@ const resolvers = {
             value
             type
           }
+          relInConnection {
+            edges {
+              name
+            }
+          }
+          relIn {
+            value
+            type
+          }
         }
       `;
 
@@ -116,7 +125,9 @@ const resolvers = {
       if (words === "") {
         var findedNodes = await MyNode.find({
           selectionSet: selectionSet,
-          limit: limit,
+          options: {
+            limit: limit
+          }
         });
         findedNodes.map((source) => {
           nodes.push({ id: source.value });
@@ -137,9 +148,7 @@ const resolvers = {
               value: wordsList[i],
             },
           });
-
           findedNodes.map((source) => {
-            console.log(source);
             if (nodes.length >= limit) return;
             nodes.push({ id: source.value });
             source.relOut.map((target, index) => {
@@ -151,9 +160,24 @@ const resolvers = {
                 label: source.relOutConnection.edges[index].name[0],
               });
             });
+            source.relIn.map((target, index) => {
+              if (nodes.length >= limit) return;
+              nodes.push({ id: target.value });
+              links.push({
+                source: target.value,
+                target: source.value,
+                label: source.relInConnection.edges[index].name[0],})
+            });
           });
         }
       }
+      // 중복제거
+      nodes = nodes.filter((node, idx, arr)=>{
+        return arr.findIndex((item) => item.id === node.id && item.id === node.id) === idx
+      });
+      links = links.filter((link, idx, arr)=>{
+        return arr.findIndex((item) => item.source === link.source && item.target === link.target && item.label === link.label) === idx
+      });
       console.log({ nodes, links });
 
       return { nodes, links };
