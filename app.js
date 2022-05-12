@@ -149,10 +149,10 @@ const resolvers = {
             },
           });
           findedNodes.map((source) => {
-            if (nodes.length >= limit) return;
+            //if (nodes.length >= limit) return;
             nodes.push({ id: source.value });
             source.relOut.map((target, index) => {
-              if (nodes.length >= limit) return;
+              //if (nodes.length >= limit) return;
               nodes.push({ id: target.value });
               links.push({
                 source: source.value,
@@ -161,7 +161,7 @@ const resolvers = {
               });
             });
             source.relIn.map((target, index) => {
-              if (nodes.length >= limit) return;
+              //if (nodes.length >= limit) return;
               nodes.push({ id: target.value });
               links.push({
                 source: target.value,
@@ -178,6 +178,16 @@ const resolvers = {
       links = links.filter((link, idx, arr)=>{
         return arr.findIndex((item) => item.source === link.source && item.target === link.target && item.label === link.label) === idx
       });
+      for (var i=limit; i<nodes.length; i++) {
+        for (var j=0; j<links.length; j++) {
+          if (links[j].source===nodes[i].id || links[j].target===nodes[i].id) {
+            links.splice(j,1)
+            j--
+          }
+        }
+        nodes.splice(i,1)
+        i--
+      }
       console.log({ nodes, links });
 
       return { nodes, links };
