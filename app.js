@@ -19,6 +19,7 @@ const typeDefs = `
     type D3Node{
       id: String!
       url: String
+      type: String!
     }
 
     type D3Link{
@@ -130,7 +131,7 @@ const resolvers = {
           }
         });
         findedNodes.map((source) => {
-          nodes.push({ id: source.value });
+          nodes.push({ id: source.value, type: source.type });
           source.relOut.map((target, index) => {
             links.push({
               source: source.value,
@@ -150,10 +151,10 @@ const resolvers = {
           });
           findedNodes.map((source) => {
             //if (nodes.length >= limit) return;
-            nodes.push({ id: source.value });
+            nodes.push({ id: source.value, type: source.type });
             source.relOut.map((target, index) => {
               //if (nodes.length >= limit) return;
-              nodes.push({ id: target.value });
+              nodes.push({ id: target.value, type: target.type });
               links.push({
                 source: source.value,
                 target: target.value,
@@ -162,7 +163,7 @@ const resolvers = {
             });
             source.relIn.map((target, index) => {
               //if (nodes.length >= limit) return;
-              nodes.push({ id: target.value });
+              nodes.push({ id: target.value, type: target.type });
               links.push({
                 source: target.value,
                 target: source.value,
