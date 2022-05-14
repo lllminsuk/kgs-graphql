@@ -179,6 +179,7 @@ const resolvers = {
       links = links.filter((link, idx, arr)=>{
         return arr.findIndex((item) => item.source === link.source && item.target === link.target && item.label === link.label) === idx
       });
+      console.log(nodes, links)
       for (var i=limit; i<nodes.length; i++) {
         for (var j=0; j<links.length; j++) {
           if (links[j].source===nodes[i].id || links[j].target===nodes[i].id) {
@@ -188,6 +189,22 @@ const resolvers = {
         }
         nodes.splice(i,1)
         i--
+      }
+      for (var i=0; i<links.length; i++) {
+        checkSource = false
+        checkTarget = false
+        for (var j=0; j<nodes.length; j++) {
+          if (links[i].source===nodes[j].id) {
+            checkSource = true
+          }
+          if (links[i].target===nodes[j].id) {
+            checkTarget = true
+          }
+        }
+        if (!checkSource || !checkTarget) {
+          links.splice(i,1)
+          i--
+        }
       }
       console.log({ nodes, links });
 
