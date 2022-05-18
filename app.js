@@ -302,10 +302,10 @@ const resolvers = {
 
       //Node 존재여부 체크필요
       let node1 = await MyNode.find({
-        where: { value: E1_value, type: E1_type },
+        where: { value: E1_value },
       });
       let node2 = await MyNode.find({
-        where: { value: E2_value, type: E2_type },
+        where: { value: E2_value },
       });
       isNode1Exist = node1.length >= 1;
       isNode2Exist = node2.length >= 1;
@@ -463,7 +463,7 @@ const resolvers = {
         const set = new Set(newUrl);
         newUrl = [...set];
         await MyNode.update({
-          where: { value: E2_value, type: E2_type },
+          where: { value: E2_value },
           update: { url: newUrl }
         })
         MyNode.create({
@@ -479,7 +479,10 @@ const resolvers = {
               relOut: {
                 connect: {
                   where: {
-                    node: { value: E2_value, type: E2_type },
+                    node: { 
+                      value: E2_value, 
+                      //type: E2_type 
+                    },
                   },
                   edge: {
                     name: REL,
@@ -497,7 +500,7 @@ const resolvers = {
         const set = new Set(newUrl);
         newUrl = [...set];
         await MyNode.update({
-          where: { value: E1_value, type: E1_type },
+          where: { value: E1_value },
           update: { url: newUrl }
         })
         MyNode.create({
@@ -513,7 +516,10 @@ const resolvers = {
               relIn: {
                 connect: {
                   where: {
-                    node: { value: E1_value, type: E1_type },
+                    node: { 
+                      value: E1_value, 
+                      //type: E1_type 
+                    },
                   },
                   edge: {
                     name: REL,
@@ -531,7 +537,7 @@ const resolvers = {
         const set1 = new Set(newUrl1);
         newUrl1 = [...set1];
         await MyNode.update({
-          where: { value: E1_value, type: E1_type },
+          where: { value: E1_value },
           update: { url: newUrl1 }
         })
         var newUrl2 = node2[0].url
@@ -539,19 +545,22 @@ const resolvers = {
         const set2 = new Set(newUrl2);
         newUrl2 = [...set2];
         await MyNode.update({
-          where: { value: E2_value, type: E2_type },
+          where: { value: E2_value },
           update: { url: newUrl2 }
         })
         MyNode.update({
           where: {
             value: E1_value,
-            type: E1_type,
+            //type: E1_type,
           },
           update: {
             relOut: {
               connect: {
                 where: {
-                  node: { value: E2_value, type: E2_type },
+                  node: { 
+                    value: E2_value, 
+                    //type: E2_type 
+                  },
                 },
                 edge: {
                   name: REL,
