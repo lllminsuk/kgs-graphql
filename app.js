@@ -18,8 +18,12 @@ const driver = neo4j.driver(
 const typeDefs = `
     type D3Node{
       id: String!
-      url: String
       type: String!
+      url: [String]
+      main: String
+      sub: String
+      title: String
+      uploadTime: String
     }
 
     type D3Link{
@@ -36,6 +40,11 @@ const typeDefs = `
     type MyNode {
       type: String!
       value: String!
+      url: [String]
+      main: String
+      sub: String
+      title: String
+      uploadTime: String
       createdAt: DateTime! @timestamp(operations: [CREATE, UPDATE])
       relOut: [MyNode!]! @relationship(type: "REL", properties: "MyRel", direction: OUT)
       relIn: [MyNode!]! @relationship(type: "REL", properties: "MyRel", direction: IN)
@@ -53,8 +62,18 @@ const typeDefs = `
       insertTwoNodes(
         E1_value: String!
         E1_type: String!
+        E1_url: String
+        E1_main: String
+        E1_sub: String
+        E1_title: String
+        E1_uploadTime: String
         E2_value: String!
         E2_type: String!
+        E2_url: String
+        E2_main: String
+        E2_sub: String
+        E2_title: String
+        E2_uploadTime: String
         REL: String!
       ): Boolean!
     }
@@ -130,6 +149,11 @@ const resolvers = {
         {
           value
           type
+          url
+          main
+          sub
+          title
+          uploadTime
           relOutConnection {
             edges {
               name
@@ -138,6 +162,11 @@ const resolvers = {
           relOut {
             value
             type
+            url
+            main
+            sub
+            title
+            uploadTime
           }
           relInConnection {
             edges {
@@ -147,6 +176,11 @@ const resolvers = {
           relIn {
             value
             type
+            url
+            main
+            sub
+            title
+            uploadTime
           }
         }
       `;
@@ -162,7 +196,7 @@ const resolvers = {
           }
         });
         findedNodes.map((source) => {
-          nodes.push({ id: source.value, type: source.type });
+          nodes.push({ id: source.value, type: source.type, url: source.url, main: source.main, sub: source.sub, title: source.title, uploadTime: source.uploadTime });
           source.relOut.map((target, index) => {
             links.push({
               source: source.value,
@@ -182,10 +216,10 @@ const resolvers = {
           });
           findedNodes.map((source) => {
             //if (nodes.length >= limit) return;
-            nodes.push({ id: source.value, type: source.type });
+            nodes.push({ id: source.value, type: source.type, url: source.url, main: source.main, sub: source.sub, title: source.title, uploadTime: source.uploadTime });
             source.relOut.map((target, index) => {
               //if (nodes.length >= limit) return;
-              nodes.push({ id: target.value, type: target.type });
+              nodes.push({ id: target.value, type: target.type, url: target.url, main: target.main, sub: target.sub, title: target.title, uploadTime: target.uploadTime });
               links.push({
                 source: source.value,
                 target: target.value,
@@ -194,7 +228,7 @@ const resolvers = {
             });
             source.relIn.map((target, index) => {
               //if (nodes.length >= limit) return;
-              nodes.push({ id: target.value, type: target.type });
+              nodes.push({ id: target.value, type: target.type, url: target.url, main: target.main, sub: target.sub, title: target.title, uploadTime: target.uploadTime });
               links.push({
                 source: target.value,
                 target: source.value,
@@ -240,7 +274,6 @@ const resolvers = {
         links[i].label = relTag[links[i].label]
       }
       console.log({ nodes, links });
-
       return { nodes, links };
     },
   },
@@ -248,7 +281,7 @@ const resolvers = {
   Mutation: {
     insertTwoNodes: async (
       _,
-      { E1_value, E1_type, E2_value, E2_type, REL },
+      { E1_value, E1_type, E1_url, E1_main, E1_sub, E1_title, E1_uploadTime, E2_value, E2_type, E2_url, E2_main, E2_sub, E2_title, E2_uploadTime, REL },
       ___
     ) => {
       const selectionSet = `
@@ -268,14 +301,14 @@ const resolvers = {
       console.log(nodeNum, relationNum);
 
       //Node 존재여부 체크필요
-      let isNode1Exist = await MyNode.find({
+      let node1 = await MyNode.find({
         where: { value: E1_value, type: E1_type },
       });
-      let isNode2Exist = await MyNode.find({
+      let node2 = await MyNode.find({
         where: { value: E2_value, type: E2_type },
       });
-      isNode1Exist = isNode1Exist.length >= 1;
-      isNode2Exist = isNode2Exist.length >= 1;
+      isNode1Exist = node1.length >= 1;
+      isNode2Exist = node2.length >= 1;
 
       if (!isNode1Exist && !isNode2Exist && nodeNum + 2 > NODE_LIMIT) {
         console.log("deleteTwoNode");
@@ -406,9 +439,14 @@ const resolvers = {
             {
               value: E1_value,
               type: E1_type,
+              main: E1_main,
+              sub: E1_sub,
+              url: [E1_url],
+              title: E1_title,
+              uploadTime: E1_uploadTime,
               relOut: {
                 create: {
-                  node: { value: E2_value, type: E2_type },
+                  node: { value: E2_value, type: E2_type, main: E2_main, sub: E2_sub, url: [E2_url], title: E2_title, uploadTime: E2_uploadTime },
                   edge: {
                     name: REL,
                   },
@@ -420,11 +458,22 @@ const resolvers = {
       }
       //node2만 존재할때
       else if (!isNode1Exist && isNode2Exist) {
+        var newUrl = node2[0].url
+        newUrl.push(E1_url)
+        await MyNode.update({
+          where: { value: E2_value, type: E2_type },
+          update: { url: newUrl }
+        })
         MyNode.create({
           input: [
             {
               value: E1_value,
               type: E1_type,
+              main: E1_main,
+              sub: E1_sub,
+              url: [E1_url],
+              title: E1_title,
+              uploadTime: E1_uploadTime,
               relOut: {
                 connect: {
                   where: {
@@ -441,11 +490,22 @@ const resolvers = {
       }
       //node1만 존재할때
       else if (isNode1Exist && !isNode2Exist) {
+        var newUrl = node1[0].url
+        newUrl.push(E1_url)
+        await MyNode.update({
+          where: { value: E1_value, type: E1_type },
+          update: { url: newUrl }
+        })
         MyNode.create({
           input: [
             {
-              value: E2_value,
-              type: E2_type,
+              value: E2_value, 
+              type: E2_type, 
+              main: E2_main, 
+              sub: E2_sub, 
+              url: [E2_url], 
+              title: E2_title, 
+              uploadTime: E2_uploadTime,
               relIn: {
                 connect: {
                   where: {
@@ -462,6 +522,18 @@ const resolvers = {
       }
       //둘다 존재할때
       else {
+        var newUrl1 = node1[0].url
+        newUrl1.push(E1_url)
+        await MyNode.update({
+          where: { value: E1_value, type: E1_type },
+          update: { url: newUrl1 }
+        })
+        var newUrl2 = node2[0].url
+        newUrl2.push(E2_url)
+        await MyNode.update({
+          where: { value: E2_value, type: E2_type },
+          update: { url: newUrl2 }
+        })
         MyNode.update({
           where: {
             value: E1_value,
