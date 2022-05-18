@@ -460,6 +460,8 @@ const resolvers = {
       else if (!isNode1Exist && isNode2Exist) {
         var newUrl = node2[0].url
         newUrl.push(E1_url)
+        const set = new Set(newUrl);
+        newUrl = [...set];
         await MyNode.update({
           where: { value: E2_value, type: E2_type },
           update: { url: newUrl }
@@ -492,6 +494,8 @@ const resolvers = {
       else if (isNode1Exist && !isNode2Exist) {
         var newUrl = node1[0].url
         newUrl.push(E1_url)
+        const set = new Set(newUrl);
+        newUrl = [...set];
         await MyNode.update({
           where: { value: E1_value, type: E1_type },
           update: { url: newUrl }
@@ -524,12 +528,16 @@ const resolvers = {
       else {
         var newUrl1 = node1[0].url
         newUrl1.push(E1_url)
+        const set1 = new Set(newUrl1);
+        newUrl1 = [...set1];
         await MyNode.update({
           where: { value: E1_value, type: E1_type },
           update: { url: newUrl1 }
         })
         var newUrl2 = node2[0].url
         newUrl2.push(E2_url)
+        const set2 = new Set(newUrl2);
+        newUrl2 = [...set2];
         await MyNode.update({
           where: { value: E2_value, type: E2_type },
           update: { url: newUrl2 }
